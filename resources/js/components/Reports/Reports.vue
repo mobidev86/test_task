@@ -48,7 +48,11 @@
                 <p v-if="errors.split_session" class="text-red-500 text-xs italic">{{ errors.split_session.join(', ') }}</p>
             </div>
 
+            <div class="mb-4">
+                <p v-if="errors.message" class="text-red-500 text-xs italic">{{ errors.message.join(', ') }}</p>
+            </div>
             <div class="flex items-center gap-2">
+
                 <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                     Generate report
                 </button>

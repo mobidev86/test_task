@@ -59,102 +59,122 @@ class ReportController extends Controller
             'student_id' => 'required|exists:students,id',
         ]);
 
-        $file = $request->file('file');
-        $fileName = time() . '_' . $file->getClientOriginalName();
-        $filePath = $file->storeAs('uploads', $fileName);
+        try {
+           
 
-        $extractTo = storage_path('app/uploads/' . pathinfo($fileName, PATHINFO_FILENAME));
+            $file = $request->file('file');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('uploads', $fileName);
 
-       
-        $zip = new \ZipArchive;
-        if ($zip->open(storage_path('app/' . $filePath)) === TRUE) {
-            $zip->extractTo($extractTo);
-            $zip->close();
-        } else {
-            return back()->withErrors('Failed to open the DocX file.');
-        }
+            $extractTo = storage_path('app/uploads/' . pathinfo($fileName, PATHINFO_FILENAME));
 
-        $xmlFile = $extractTo . '/word/document.xml';
-        if (!file_exists($xmlFile)) {
-            return back()->withErrors('Failed to find document.xml.');
-        }
-
-        $xmlContent = simplexml_load_file($xmlFile);
-        if ($xmlContent === false) {
-            return back()->withErrors('Failed to load XML.');
-        }
-
-        $namespaces = $xmlContent->getNamespaces(true);
-        $xmlContent->registerXPathNamespace('w', $namespaces['w']);
-
-       
-        $tables = $xmlContent->xpath('//w:tbl');
-        $TableArrayFile = [];
-      
-
-        foreach ($tables as $table) {
-            $rows = $table->xpath('.//w:tr');
-            foreach ($rows as $row) {
-                $rowData = [];
-                $cells = $row->xpath('.//w:tc');
-                
-                if (count($cells) >= 4) {
-                    foreach ($cells as $cell) {
-                        $texts = $cell->xpath('.//w:t');
-                        $textContent = implode(' ', array_map('strval', $texts));
-                        $textContent = trim($textContent);
-                        if (strpos($textContent, 'to') !== false) {
-                            $dateParts = explode('to', $textContent);
-                            $dateParts = array_map('trim', $dateParts);
-                            if (count($dateParts) == 2) {
-                                $startDate = $dateParts[0];
-                                $endDate = $dateParts[1];
-                                $startDate = preg_replace('/[^0-9-]/', '', $startDate); 
-                                $endDate = preg_replace('/[^0-9-]/', '', $endDate); 
-                                $rowData[] = $startDate . ' to ' . $endDate;
-                            } else {
-                                $rowData[] = $textContent; 
-                            }
-                        } else {
-                            $rowData[] = $textContent;
-                        }
-                    }
         
+            $zip = new \ZipArchive;
+            if ($zip->open(storage_path('app/' . $filePath)) === TRUE) {
+                $zip->extractTo($extractTo);
+                $zip->close();
+            } else {
+                return back()->withErrors('Failed to open the DocX file.');
+            }
+
+            $xmlFile = $extractTo . '/word/document.xml';
+            if (!file_exists($xmlFile)) {
+                return back()->withErrors('Failed to find document.xml.');
+            }
+
+            $xmlContent = simplexml_load_file($xmlFile);
+            if ($xmlContent === false) {
+                return back()->withErrors('Failed to load XML.');
+            }
+
+            $namespaces = $xmlContent->getNamespaces(true);
+            $xmlContent->registerXPathNamespace('w', $namespaces['w']);
+
+        
+            $tables = $xmlContent->xpath('//w:tbl');
+            $TableArrayFile = [];
+        
+
+            foreach ($tables as $table) {
+                $rows = $table->xpath('.//w:tr');
+                foreach ($rows as $row) {
+                    $rowData = [];
+                    $cells = $row->xpath('.//w:tc');
                     
-                    if (isset($rowData[2]) && strpos($rowData[2], 'to') !== false) {
-                        $dateRange = $rowData[2];
-                        $dateRangeParts = explode('to', $dateRange);
-                        $startDate = trim($dateRangeParts[0]);
-                        $endDate = trim($dateRangeParts[1]);
-                        $startDate = preg_replace('/[^0-9-]/', '', $startDate); 
-                        $endDate = preg_replace('/[^0-9-]/', '', $endDate);
-                        $rowData[2] = $startDate . ' to ' . $endDate;
-                    }
-        
-                    $TableArrayFile[] = $rowData;
-                }else{
-
-                    foreach ($cells as $cell) {
-                        
-                        $texts = $cell->xpath('.//w:t');
-                        $textContent = implode(' ', array_map('strval', $texts));
-                        $textContent = trim($textContent);
+                    if (count($cells) >= 4) {
+                        foreach ($cells as $cell) {
+                            $texts = $cell->xpath('.//w:t');
+                            $textContent = implode(' ', array_map('strval', $texts));
+                            $textContent = trim($textContent);
+                            if (strpos($textContent, 'to') !== false) {
+                                $dateParts = explode('to', $textContent);
+                                $dateParts = array_map('trim', $dateParts);
+                                if (count($dateParts) == 2) {
+                                    $startDate = $dateParts[0];
+                                    $endDate = $dateParts[1];
+                                    $startDate = preg_replace('/[^0-9-]/', '', $startDate); 
+                                    $endDate = preg_replace('/[^0-9-]/', '', $endDate); 
+                                    $rowData[] = $startDate . ' to ' . $endDate;
+                                } else {
+                                    $rowData[] = $textContent; 
+                                }
+                            } else {
+                                $rowData[] = $textContent;
+                            }
+                        }
             
                         
-                        $rowData[] = $textContent;
-                    }
-                    if (!empty($rowData)) {
-                        $TableArray[] = $rowData;
+                        if (isset($rowData[2]) && strpos($rowData[2], 'to') !== false) {
+                            $dateRange = $rowData[2];
+                            $dateRangeParts = explode('to', $dateRange);
+                            $startDate = trim($dateRangeParts[0]);
+                            $endDate = trim($dateRangeParts[1]);
+                            $startDate = preg_replace('/[^0-9-]/', '', $startDate); 
+                            $endDate = preg_replace('/[^0-9-]/', '', $endDate);
+                            $rowData[2] = $startDate . ' to ' . $endDate;
+                        }
+            
+                        $TableArrayFile[] = $rowData;
+                    }else{
+
+                        foreach ($cells as $cell) {
+                            
+                            $texts = $cell->xpath('.//w:t');
+                            $textContent = implode(' ', array_map('strval', $texts));
+                            $textContent = trim($textContent);
+                
+                            
+                            $rowData[] = $textContent;
+                        }
+                        if (!empty($rowData)) {
+                            $TableArray[] = $rowData;
+                        }
                     }
                 }
             }
-        }
 
-        $columnTable = $this->arrangeDataCol($TableArray);
-        $rowTable = $this->arrangeDataRow($TableArrayFile);
-        $mergedArray = array_merge($columnTable, $rowTable);
+            $columnTable = $this->arrangeDataCol($TableArray);
+            $rowTable = $this->arrangeDataRow($TableArrayFile);
+            $mergedArray = array_merge($columnTable, $rowTable);
        
         $this->insertTargetReport($mergedArray,$validated['student_id']);
+
+        } catch (Exception $e) {
+            
+                $errorMessage = $e->getMessage();
+                $datetimeError = '';
+                
+               
+                if (strpos($errorMessage, 'Invalid datetime format') !== false) {
+                    
+                    preg_match("/Invalid datetime format:.*Incorrect date value: '[^']*'/", $errorMessage, $matches);
+                    if (!empty($matches)) {
+                        $datetimeError = $matches[0];
+                    }
+                }
+                
+                return response()->json([ 'errors' => ['upload_error' => [$datetimeError ? $datetimeError : 'An unexpected error occurred.']]], 400);
+        }
     }
 
     public function insertTargetReport($mergedArray, $studentId)
@@ -183,8 +203,11 @@ class ReportController extends Controller
                 'to_date' => 'required|date',
             ]);
 
-        $getTemplateReport = $this->templateReplace($validated);
-       
+            $getTemplateReport = $this->templateReplace($validated);
+            if($getTemplateReport == "Target Improvement" || $getTemplateReport == "Session")
+            {
+                return response()->json([ 'errors' => ['message' => ['No '. $getTemplateReport.' found for the selected student within the specified date range.']]], 400);
+            }
 
             Pdf::setOptions(['isHtml5ParserEnabled' => true, 'isPhpEnabled' => true]);
             for ($i=1;$i<=round(15/$request->split_session);$i++) {
@@ -197,7 +220,7 @@ class ReportController extends Controller
                     $pdfFiles[] = $path;
             }
 
-           $zipFile = 'documents'.time().'.zip';
+            $zipFile = 'documents'.time().'.zip';
             $zip = new \ZipArchive();
             $zipPath = storage_path('app/public/'.$zipFile);
             if ($zip->open($zipPath, \ZipArchive::CREATE) === TRUE) {

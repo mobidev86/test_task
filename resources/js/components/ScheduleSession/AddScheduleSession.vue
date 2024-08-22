@@ -16,7 +16,7 @@
 
             <!-- Arrange Start Time and End Time in one row -->
             <div class="mb-4 flex gap-2">
-                <div class="w-1/2">
+                <div class="w-1/3">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="sessionDate">
                     Session Date
                 </label>
@@ -25,15 +25,24 @@
 
                 </div>
 
-
-                <div class="w-1/2">
+                <div class="w-1/3">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="startTime">
                         Start Time
                     </label>
                     <input v-model="startTime" id="startTime" type="time" placeholder="Start Time" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                     <p v-if="errors.start_time" class="text-red-500 text-xs italic">{{ errors.start_time.join(', ') }}</p>
                 </div>
+
+                <div class="w-1/3">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Duration
+                    </label>
+                    <p class="text-gray-700 text-sm font-semibold">{{ endTime }}</p>
+                </div>
+
             </div>
+
+            
 
             <div class="mb-4 flex items-center">
                 <input type="checkbox" v-model="isRepeated" id="isRepeated" class="mr-2">
@@ -47,7 +56,6 @@
                 <router-link to="/schedule-sessions" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
                     Back
                 </router-link>
-                
             </div>
         </form>      
     </div>
@@ -65,9 +73,20 @@ export default {
             errors: {}, 
         };
     },
+    computed: {
+        endTime() {
+            if (!this.startTime) return '';
+
+            const [hours, minutes] = this.startTime.split(':').map(Number);
+
+            const endTime = new Date();
+            endTime.setHours(hours, minutes + 15);
+            
+            return endTime.toTimeString().slice(0, 5)+ ' - (15 min)';
+        }
+    },
     async created() {
         await this.fetchStudents();
-        
     },
     methods: {
         async fetchStudents() {
@@ -78,7 +97,6 @@ export default {
                 console.error('Error fetching students:', error);
             }
         },
-       
         async scheduleSession() {
             try {
                 await axios.post('/sessions', {

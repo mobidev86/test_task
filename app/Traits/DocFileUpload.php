@@ -90,17 +90,31 @@ trait DocFileUpload {
     public function templateReplace($validated)
     {
         $reportTemplate = ReportTemplate::first();
-        $targetReport = TargetReport::with("student")->where("student_id", $validated["student_id"])
-        ->whereBetween('start_date', [$validated["from_date"], $validated["to_date"]])
-        ->whereBetween('end_date', [$validated["from_date"], $validated["to_date"]])
+        $targetReport = TargetReport::with("student")
+        ->where("student_id", $validated["student_id"])
+        ->where(function($query) use ($validated) {
+            $query->whereBetween('start_date', [$validated["from_date"], $validated["to_date"]])
+                  ->orWhereBetween('end_date', [$validated["from_date"], $validated["to_date"]])
+                  ->orWhere(function($query) use ($validated) {
+                      $query->where('start_date', '<', $validated["from_date"])
+                            ->where('end_date', '>', $validated["to_date"]);
+                  });
+        })
         ->first();
-
+            
         $scheduleSession = ScheduleSession::where('student_id', $validated['student_id'])
                     ->whereBetween('session_date', [$validated['from_date'], $validated['to_date']])
                     ->whereNotNull('rating')
                     ->first();
-            
-       
+
+        if (!$targetReport) {
+            return "Target Improvement";
+        }
+
+        if (!$scheduleSession) {
+            return "Session";
+        }
+
         $name = ($targetReport->student->first_name ?? '').' '.($targetReport->student->middle_name ?? '').' '.($targetReport->student->last_name ?? '');
         $values = [
             '@student_full_name' => $name,

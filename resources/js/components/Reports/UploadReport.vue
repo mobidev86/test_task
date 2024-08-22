@@ -29,6 +29,10 @@
           <p v-if="errors.file" class="text-red-500 text-xs italic">{{ errors.file.join(', ') }}</p>
         </div>
   
+        <div class="mb-4">
+          <p v-if="errors.upload_error" class="text-red-500 text-xs italic">{{ errors.upload_error.join(', ') }}</p>
+        </div>
+        
         <div class="flex items-center gap-2">
           <button 
             type="submit" 
